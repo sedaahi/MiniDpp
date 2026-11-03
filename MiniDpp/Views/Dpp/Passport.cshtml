@@ -1,0 +1,36 @@
+@model MiniDpp.Models.ProductPassportViewModel
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@Model.ModelName | Mini DPP</title>
+</head>
+<body>
+<main>
+    <p>Mini Dijital Ürün Pasaportu</p>
+    <h1>@Model.ModelName</h1>
+
+    <dl>
+        <dt>GTIN</dt>
+        <dd>@Model.Gtin</dd>
+
+        <dt>Parti numarası</dt>
+        <dd>@Model.BatchNumber</dd>
+
+        <dt>Üretim yeri</dt>
+        <dd>@Model.ProductionLocation</dd>
+
+        <dt>Malzeme bileşimi</dt>
+        <dd>%@(Model.CottonPercentage) pamuk, %@(Model.ElastanePercentage) elastan</dd>
+
+        @if (Model.CarbonKgCo2e is decimal carbon)
+        {
+            <dt>Karbon ayak izi</dt>
+            <dd>@carbon kg CO₂e</dd>
+        }
+    </dl>
+</main>
+</body>
+</html>
