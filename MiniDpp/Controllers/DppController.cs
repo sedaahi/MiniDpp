@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MiniDpp.Data;
 using MiniDpp.Models;
+using QRCoder;
 
 namespace MiniDpp.Controllers;
 
 [Route("dpp")]
 public sealed class DppController(MiniDppDbContext db) : Controller
 {
-    [HttpGet("{gtin}")]
+    [HttpGet("{gtin}", Name = "ProductPassport")]
     public async Task<IActionResult> Passport(
         string gtin,
         [FromQuery] string? rol,
@@ -56,7 +57,29 @@ public sealed class DppController(MiniDppDbContext db) : Controller
 
         return Content(JsonSerializer.Serialize(document), "application/ld+json");
     }
+    [HttpGet("{gtin}/qr.png")]
+    public async Task<IActionResult> QrCode(
+        string gtin,
+        CancellationToken cancellationToken)
+    {
+        var exists = await db.ProductBatches
+            .AnyAsync(batch => batch.Gtin == gtin, cancellationToken);
 
+        if (!exists)
+            return NotFound("Bu GTIN için ürün pasaportu bulunamadı.");
+
+        var passportUrl = Url.RouteUrl(
+                              "ProductPassport",
+                              new { gtin },
+                              Request.Scheme)
+                          ?? throw new InvalidOperationException("Pasaport adresi oluşturulamadı.");
+
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(passportUrl, QRCodeGenerator.ECCLevel.Q);
+        using var qr = new PngByteQRCode(data);
+
+        return File(qr.GetGraphic(8), "image/png");
+    }
     private async Task<ProductPassportViewModel?> FindPassportAsync(
         string gtin,
         string? rol,
