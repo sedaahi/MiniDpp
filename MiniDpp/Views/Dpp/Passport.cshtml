@@ -1,4 +1,16 @@
 @model MiniDpp.Models.ProductPassportViewModel
+@{
+    Layout = null;
+
+    var passportPath = $"{Context.Request.PathBase}/dpp/{Model.Gtin}";
+    var jsonLdPath = $"{passportPath}.jsonld";
+    var qrPath = $"{passportPath}/qr.png";
+
+    if (Model.CarbonKgCo2e.HasValue)
+    {
+        jsonLdPath += "?rol=yetkili";
+    }
+}
 
 <!DOCTYPE html>
 <html lang="tr">
@@ -6,31 +18,219 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@Model.ModelName | Mini DPP</title>
+
+    <style>
+        :root {
+            font-family: system-ui, sans-serif;
+            color: #17243a;
+            background: #f4f7fb;
+            line-height: 1.5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+        }
+
+        main {
+            width: min(900px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 40px 0;
+        }
+
+        header {
+            margin-bottom: 24px;
+        }
+
+        header p {
+            margin: 0 0 8px;
+            color: #52647a;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            line-height: 1.2;
+        }
+
+        h2 {
+            margin: 0 0 20px;
+            font-size: 1.2rem;
+        }
+
+        .card {
+            padding: clamp(20px, 4vw, 32px);
+            border: 1px solid #dbe4ef;
+            border-radius: 16px;
+            background: #fff;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+            gap: 32px;
+        }
+
+        dl {
+            margin: 0;
+        }
+
+        dl div {
+            padding: 12px 0;
+            border-bottom: 1px solid #e5ebf3;
+        }
+
+        dl div:first-child {
+            padding-top: 0;
+        }
+
+        dt {
+            color: #52647a;
+            font-size: 0.9rem;
+        }
+
+        dd {
+            margin: 4px 0 0;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+
+        .gtin {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .qr-panel {
+            text-align: center;
+        }
+
+        .qr-panel img {
+            display: block;
+            width: 220px;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto 16px;
+        }
+
+        .qr-panel p {
+            color: #52647a;
+            font-size: 0.9rem;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        a {
+            color: #214e82;
+            font-weight: 600;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 16px;
+            border: 1px solid #214e82;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+
+        .button.primary {
+            background: #214e82;
+            color: #fff;
+        }
+
+        a:focus-visible {
+            outline: 3px solid #c47c14;
+            outline-offset: 4px;
+        }
+
+        .notice {
+            margin: 24px 0 0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: #fff3e0;
+            color: #783c0b;
+        }
+    </style>
 </head>
 <body>
-<main>
-    <p>Mini Dijital Ürün Pasaportu</p>
-    <h1>@Model.ModelName</h1>
+    <main>
+        <header>
+            <p>Mini Dijital Ürün Pasaportu</p>
+            <h1>@Model.ModelName</h1>
+        </header>
 
-    <dl>
-        <dt>GTIN</dt>
-        <dd>@Model.Gtin</dd>
+        <section class="card" aria-labelledby="product-title">
+            <h2 id="product-title">Ürün bilgileri</h2>
 
-        <dt>Parti numarası</dt>
-        <dd>@Model.BatchNumber</dd>
+            <div class="details">
+                <dl>
+                    <div>
+                        <dt>GTIN</dt>
+                        <dd class="gtin">@Model.Gtin</dd>
+                    </div>
 
-        <dt>Üretim yeri</dt>
-        <dd>@Model.ProductionLocation</dd>
+                    <div>
+                        <dt>Parti numarası</dt>
+                        <dd>@Model.BatchNumber</dd>
+                    </div>
 
-        <dt>Malzeme bileşimi</dt>
-        <dd>%@(Model.CottonPercentage) pamuk, %@(Model.ElastanePercentage) elastan</dd>
+                    <div>
+                        <dt>Üretim yeri</dt>
+                        <dd>@Model.ProductionLocation</dd>
+                    </div>
 
-        @if (Model.CarbonKgCo2e is decimal carbon)
-        {
-            <dt>Karbon ayak izi</dt>
-            <dd>@carbon kg CO₂e</dd>
-        }
-    </dl>
-</main>
+                    <div>
+                        <dt>Malzeme bileşimi</dt>
+                        <dd>
+                            %@Model.CottonPercentage.ToString("0.##") pamuk,
+                            %@Model.ElastanePercentage.ToString("0.##") elastan
+                        </dd>
+                    </div>
+
+                    @if (Model.CarbonKgCo2e is decimal carbon)
+                    {
+                        <div>
+                            <dt>Karbon ayak izi</dt>
+                            <dd>@carbon.ToString("0.##") kg CO₂e</dd>
+                        </div>
+                    }
+                </dl>
+
+                <div class="qr-panel">
+                    <img
+                        src="@qrPath"
+                        alt="@($"{Model.ModelName} ürün pasaportunun QR kodu")"
+                        width="220"
+                        height="220">
+                    <p>Ürün pasaportuna ulaşmak için QR kodu okutun.</p>
+                    <a href="@qrPath" download="@($"{Model.Gtin}.png")">
+                        QR kodunu indir
+                    </a>
+                </div>
+            </div>
+
+            <nav class="actions" aria-label="Pasaport çıktıları">
+                <a class="button primary" href="@jsonLdPath">
+                    JSON-LD çıktısını aç
+                </a>
+                <a class="button" href="@passportPath">
+                    Tüketici görünümü
+                </a>
+            </nav>
+
+            @if (Model.CarbonKgCo2e.HasValue)
+            {
+                <p class="notice">
+                    Yetkili demo görünümü açık. Karbon bilgisi bu görünümde gösterilir.
+                </p>
+            }
+        </section>
+    </main>
 </body>
 </html>
