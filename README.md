@@ -22,7 +22,7 @@ bağlantıyla ve QR üzerinden açılan ürün pasaportunu oluşturur.
 ## Gereksinimler
 
 - .NET 10 SDK
-- .NET 10 ile uyumlu Node.js ortamından bağımsız olarak Node.js 24 LTS ve npm
+- Node.js 24 LTS ve npm
 - Entity Framework Core CLI: dotnet-ef 10.0.14
 
 SQLite için ayrıca veritabanı sunucusu kurulması gerekmez.
