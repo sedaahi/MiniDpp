@@ -24,20 +24,58 @@ public sealed class ProductImportsController(MiniDppDbContext db) : ControllerBa
         if (result.Errors.Any(error => error.LineNumber == 1))
             return BadRequest(new { errors = result.Errors });
 
-        var models = await db.ProductModels.ToDictionaryAsync(
-            model => model.Name, cancellationToken);
+        var models = (await db.ProductModels
+                .ToListAsync(cancellationToken))
+            .GroupBy(model => model.Name, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.First(),
+                StringComparer.Ordinal);
 
-        var existingGtins = (await db.ProductBatches
-            .Select(batch => batch.Gtin)
-            .ToListAsync(cancellationToken))
-            .ToHashSet(StringComparer.Ordinal);
+        var batches = await db.ProductBatches
+            .Include(batch => batch.ProductModel)
+            .ToDictionaryAsync(batch => batch.Gtin, cancellationToken);
+
+        var processedGtins = new HashSet<string>(StringComparer.Ordinal);
+        var errors = result.Errors.ToList();
 
         var imported = 0;
+        var updated = 0;
         var skipped = 0;
 
         foreach (var row in result.ValidRows)
         {
-            if (!existingGtins.Add(row.Gtin))
+            // Aynı dosyada aynı GTIN için ilk geçerli satır işlenir.
+            if (!processedGtins.Add(row.Gtin))
+            {
+                errors.Add(new CsvRowError(
+                    row.LineNumber,
+                    new[]
+                    {
+                        "Aynı dosyada bu GTIN için birden fazla geçerli satır var."
+                    }));
+
+                continue;
+            }
+
+            ProductCsvValidator.TryParseDecimal(
+                row.CottonPercentage, out var cotton);
+
+            ProductCsvValidator.TryParseDecimal(
+                row.ElastanePercentage, out var elastane);
+
+            ProductCsvValidator.TryParseDecimal(
+                row.CarbonKgCo2e, out var carbon);
+
+            batches.TryGetValue(row.Gtin, out var batch);
+
+            if (batch is not null &&
+                batch.ProductModel.Name == row.ModelName &&
+                batch.BatchNumber == row.BatchNumber &&
+                batch.ProductionLocation == row.ProductionLocation &&
+                batch.CottonPercentage == cotton &&
+                batch.ElastanePercentage == elastane &&
+                batch.CarbonKgCo2e == carbon)
             {
                 skipped++;
                 continue;
@@ -50,26 +88,89 @@ public sealed class ProductImportsController(MiniDppDbContext db) : ControllerBa
                 db.ProductModels.Add(model);
             }
 
-            ProductCsvValidator.TryParseDecimal(row.CottonPercentage, out var cotton);
-            ProductCsvValidator.TryParseDecimal(row.ElastanePercentage, out var elastane);
-            ProductCsvValidator.TryParseDecimal(row.CarbonKgCo2e, out var carbon);
+            var now = DateTime.UtcNow;
 
-            db.ProductBatches.Add(new ProductBatch
+            if (batch is null)
             {
-                Gtin = row.Gtin,
-                BatchNumber = row.BatchNumber,
-                ProductionLocation = row.ProductionLocation,
-                CottonPercentage = cotton,
-                ElastanePercentage = elastane,
-                CarbonKgCo2e = carbon,
-                ProductModel = model
+                batch = new ProductBatch
+                {
+                    Gtin = row.Gtin,
+                    BatchNumber = row.BatchNumber,
+                    ProductionLocation = row.ProductionLocation,
+                    CottonPercentage = cotton,
+                    ElastanePercentage = elastane,
+                    CarbonKgCo2e = carbon,
+                    ProductModel = model,
+                    Version = 1,
+                    UpdatedAtUtc = now
+                };
+
+                db.ProductBatches.Add(batch);
+                batches.Add(row.Gtin, batch);
+                imported++;
+
+                continue;
+            }
+
+            // Güncel kaydı değiştirmeden önce eski sürümünü sakla.
+            db.ProductBatchVersions.Add(new ProductBatchVersion
+            {
+                ProductBatch = batch,
+                Gtin = batch.Gtin,
+                ModelName = batch.ProductModel.Name,
+                BatchNumber = batch.BatchNumber,
+                ProductionLocation = batch.ProductionLocation,
+                CottonPercentage = batch.CottonPercentage,
+                ElastanePercentage = batch.ElastanePercentage,
+                CarbonKgCo2e = batch.CarbonKgCo2e,
+                Version = batch.Version,
+                UpdatedAtUtc = batch.UpdatedAtUtc,
+                ArchivedAtUtc = now
             });
 
-            imported++;
+            batch.ProductModel = model;
+            batch.BatchNumber = row.BatchNumber;
+            batch.ProductionLocation = row.ProductionLocation;
+            batch.CottonPercentage = cotton;
+            batch.ElastanePercentage = elastane;
+            batch.CarbonKgCo2e = carbon;
+            batch.Version++;
+            batch.UpdatedAtUtc = now;
+
+            updated++;
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            // Eski sürümler ve güncellemeler birlikte kaydedilir.
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Ürün başka bir işlem tarafından güncellendi. Dosyayı tekrar yükleyin."
+            });
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is
+                  Microsoft.Data.Sqlite.SqliteException
+                  { SqliteErrorCode: 19 })
+        {
+            return Conflict(new
+            {
+                message =
+                    "Kayıt çakışması nedeniyle dosya kaydedilemedi. Dosyayı tekrar yükleyin."
+            });
+        }
 
-        return Ok(new { imported, skipped, errors = result.Errors });
+        return Ok(new
+        {
+            imported,
+            updated,
+            skipped,
+            errors = errors.OrderBy(error => error.LineNumber)
+        });
     }
 }

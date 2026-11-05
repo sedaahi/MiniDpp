@@ -10,6 +10,9 @@ public class ProductBatch
     public required string ProductionLocation { get; set; }
     public decimal CarbonKgCo2e { get; set; }
 
+    public int Version { get; set; } = 1;
+    public DateTime? UpdatedAtUtc { get; set; }
+
     public int ProductModelId { get; set; }
     public ProductModel ProductModel { get; set; } = null!;
 }
