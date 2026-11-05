@@ -5,3 +5,4 @@ riderModule.iml
 /_ReSharper.Caches/
 minidpp.db
 minidpp.db-*
+.DS_Store
