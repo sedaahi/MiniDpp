@@ -1,37 +1,26 @@
 # Mini Dijital Ürün Pasaportu
 
-CSV dosyasından ürün bilgilerini içe aktaran, doğrulayan ve dijital ürün
-pasaportu oluşturan full-stack uygulama.
+CSV’den ürün bilgilerini içe aktaran, doğrulayan ve dijital ürün pasaportu
+oluşturan full-stack uygulama. HTML pasaport, JSON-LD, QR kod ve ürün
+sürüm geçmişi sunar.
 
-Ürün bilgileri HTML ve JSON-LD olarak sunulur. Her ürün için pasaport
-adresini içeren PNG biçiminde QR kod oluşturulur. Değişen kayıtların
-önceki sürümleri korunur.
-
-## Teknolojiler
-
-- ASP.NET Core / .NET 10
-- Entity Framework Core 10 ve SQLite
-- React 19 ve TypeScript
-- Vite
-- QRCoder
-- Razor Views
-
-React, CSV yükleme ve ürün yönetim ekranını sağlar. Razor, doğrudan
-bağlantıyla ve QR üzerinden açılan ürün pasaportunu oluşturur.
-
-## Gereksinimler
-
-- .NET 10 SDK
-- Node.js 24 LTS ve npm
-- Entity Framework Core CLI: dotnet-ef 10.0.14
-
-SQLite için ayrıca veritabanı sunucusu kurulması gerekmez.
+**Teknolojiler:** .NET 10, EF Core, SQLite, React 19, TypeScript, Vite, Razor ve QRCoder.
 
 ## Kurulum ve çalıştırma
 
-Depoyu indirdikten sonra depo kökünde bir terminal açın.
+**Gereksinimler:** .NET 10 SDK, Node.js 24 LTS ve npm.
+SQLite için ayrıca sunucu kurulması gerekmez.
 
-### Backend
+### 1. Depoyu indirin
+
+```bash
+git clone https://github.com/sedaahi/MiniDpp.git
+cd MiniDpp
+```
+
+Bu klasör depo köküdür; `MiniDpp`, `client`, `samples` ve `README.md` içerir.
+
+### 2. Backend’i hazırlayın
 
 ```bash
 cd MiniDpp
@@ -44,37 +33,25 @@ EF Core CLI kurulu değilse:
 dotnet tool install --global dotnet-ef --version 10.0.14
 ```
 
-Global araç zaten kuruluysa ve sürümünü eşitlemek isterseniz:
-
-```bash
-dotnet tool update --global dotnet-ef --version 10.0.14
-```
-
-Veritabanını oluşturup backend'i başlatın:
+**İlk çalıştırmadan önce veritabanını ve tabloları oluşturun:**
 
 ```bash
 dotnet ef database update
+```
+
+Mevcut migration’lar depoya dahildir; yeni migration oluşturmayın.
+
+### 3. Backend’i başlatın
+
+```bash
 dotnet run --no-launch-profile --urls http://localhost:5016
 ```
 
-Migration dosyaları depoya dahildir. Mevcut projeyi çalıştırmak için
-yeni migration oluşturmak gerekmez.
+Bu terminali açık bırakın.
 
-Bağlantı ayarı `MiniDpp/appsettings.json` dosyasındadır:
+### 4. Frontend’i başlatın
 
-```json
-{
-  "ConnectionStrings": {
-    "MiniDpp": "Data Source=minidpp.db"
-  }
-}
-```
-
-Bu bölüm mevcut yapılandırma dosyasındaki diğer ayarlarla birlikte kullanılır.
-
-### Frontend
-
-Depo kökünden ikinci bir terminal açın:
+**Depo kökünde ikinci bir terminal açın:**
 
 ```bash
 cd client
@@ -82,180 +59,116 @@ npm ci
 npm run dev
 ```
 
-Uygulamayı açın:
+Tarayıcıda **http://localhost:5173** adresini açın.
+İki uygulama da çalışıyor olmalıdır. Vite, `/api` ve `/dpp` isteklerini
+backend’e yönlendirir.
 
-http://localhost:5173
+### 5. Örnek verileri yükleyin
 
-Geliştirme ortamında Vite, `/api` ve `/dpp` isteklerini
-`http://localhost:5016` adresindeki backend'e yönlendirir.
-Her iki uygulama da çalışıyor olmalıdır.
+1. İlk kurulumda ürün listesinin boş olması normaldir.
+2. “Dosya Seç” ile `samples/products.csv` dosyasını seçip “İçe aktar”a basın.
+3. Üç geçerli ürün eklenir; iki hatalı satır açıklamalarıyla gösterilir.
+4. “Pasaportu aç” bağlantısıyla ürün bilgilerini ve QR kodunu görüntüleyin.
+5. `samples/products-update.csv` dosyasını yükleyin. Mom Jean 505’in üretim
+   yeri Bursa’dan İzmir’e güncellenir.
+6. “Geçmiş” düğmesiyle eski ve güncel sürümleri inceleyin.
+   Aynı dosyayı tekrar yüklemek yeni sürüm oluşturmaz.
 
-## Kullanım
+Sonraki açılışlarda yalnızca backend ve frontend başlatma komutlarını
+çalıştırmanız yeterlidir. Kaydedilen veriler SQLite dosyasında korunur.
 
-1. Ana sayfada CSV dosyasını seçin.
-2. “İçe aktar” düğmesine basın.
-3. Eklenen, güncellenen ve değişmediği için atlanan kayıt sayılarını inceleyin.
-4. Geçersiz satırların numaralarını ve hata açıklamalarını kontrol edin.
-5. Ürün listesinden “Pasaportu aç” bağlantısına tıklayın.
-6. “Geçmiş” düğmesiyle ürünün güncel ve önceki sürümlerini görüntüleyin.
+## CSV ve doğrulama
 
-## CSV biçimi
-
-Dosya UTF-8 kodlamalı ve virgülle ayrılmış olmalıdır.
-Ondalık sayılar nokta ile yazılır.
+Dosya **UTF-8, virgülle ayrılmış** olmalı; ondalık değerler noktayla yazılmalıdır.
+GTIN’lerin başındaki sıfırlar korunmalıdır.
 
 ```csv
 gtin,model_adi,batch_no,elyaf_pamuk_yuzde,elyaf_elastan_yuzde,uretim_yeri,karbon_kg_co2e
 08690000000050,Mom Jean 505,B2027-05,97,3,Bursa,12.2
 ```
 
-GTIN metin olarak değerlendirilir; başındaki sıfırlar korunmalıdır.
-Numbers veya Excel kullanılıyorsa dışa aktarma sırasında ayırıcıya ve
-GTIN hücrelerinin metin olarak korunmasına dikkat edilmelidir.
-Dosya uzantısını değiştirmek CSV'ye dönüştürmez.
+- GTIN: 14 rakam ve geçerli kontrol basamağı.
+- Model adı, parti numarası ve üretim yeri: zorunlu.
+- Pamuk ve elastan: 0–100 aralığında, toplamları 100.
+- Karbon: sayısal ve negatif olmayan değer.
 
-### Doğrulama kuralları
+Geçerli satırlar kaydedilir; hatalı satırlar numarasıyla raporlanır.
+Başlık satırı 1’dir. Eksik başlık varsa dosya reddedilir.
+Aynı dosyada tekrarlanan geçerli GTIN’lerin yalnızca ilki işlenir.
 
-- GTIN, 14 rakamdan oluşmalı ve kontrol basamağı geçerli olmalıdır.
-- Model adı, parti numarası ve üretim yeri boş olamaz.
-- Pamuk ve elastan oranları sayısal ve 0–100 aralığında olmalıdır.
-- Pamuk ve elastan oranlarının toplamı 100 olmalıdır.
-- Karbon değeri sayısal ve sıfır veya pozitif olmalıdır.
-- Gerekli sütun başlıkları bulunmalıdır.
+## Pasaport ve çıktılar
 
-Başlık satırı 1 olarak sayılır. Geçersiz veri satırları kaydedilmez;
-geçerli satırlar işlenir. Başlık hatasında dosya reddedilir.
+Örnek veriler yüklendikten sonra:
 
-Aynı dosyada aynı GTIN için birden fazla geçerli satır varsa ilk geçerli
-satır işlenir, sonraki tekrarlar satır hatası olarak raporlanır.
+| Çıktı | Adres |
+| --- | --- |
+| HTML pasaport | http://localhost:5016/dpp/08690000000050 |
+| JSON-LD | http://localhost:5016/dpp/08690000000050.jsonld |
+| QR PNG | http://localhost:5016/dpp/08690000000050/qr.png |
+| Sürüm geçmişi | http://localhost:5016/dpp/08690000000050/history |
 
-## Örnek dosyalar ve güncelleme testi
+JSON-LD, Schema.org `Product` biçiminde ve `application/ld+json` içerik
+türüyle döner. Bulunamayan ürün için 404 yanıtı verilir.
 
-- `samples/products.csv`: Üç geçerli ve iki geçersiz satır içerir.
-- `samples/products-update.csv`: Mom Jean 505 ürününün üretim yerini
-  Bursa'dan İzmir'e değiştirir.
+**Karbon bilgisi:** Normal çıktılarda gizlidir. HTML, JSON-LD veya geçmiş
+adresine `?rol=yetkili` eklenerek gösterilir. Bu, ödev kapsamındaki rol
+gösterimidir; gerçek kimlik doğrulama sağlamaz. Karbon değeri CSV’den
+alınır, uygulama tarafından hesaplanmaz.
 
-Boş veritabanında ilk dosya yüklendiğinde:
+## Veri ve sürüm geçmişi
 
-- 3 kayıt eklenir.
-- 4. satırdaki boş GTIN raporlanır.
-- 5. satırdaki malzeme oranı toplamı hatası raporlanır.
+Modeller, güncel ürün/parti kayıtları ve eski sürümler ayrı tablolarda tutulur.
+GTIN benzersizdir; aynı GTIN ile değişen bilgiler geldiğinde eski durum
+saklanır, sürüm artırılır ve UTC güncelleme tarihi kaydedilir.
+Değişmeyen kayıtlar atlanır.
 
-Ardından güncelleme dosyası yüklendiğinde:
+Arşivleme ve güncelleme birlikte kaydedilir. Sürüm alanı eş zamanlı
+güncelleme çakışmalarının algılanmasında kullanılır.
+Arayüz tarihleri Türkiye saatinde gösterir.
 
-- 1 kayıt güncellenir.
-- 2 değişmeyen kayıt atlanır.
-- Aynı iki geçersiz satır raporlanır.
-- Mom Jean 505 için Bursa bilgisi eski sürümde korunur.
-
-Güncelleme dosyası tekrar yüklendiğinde yeni sürüm oluşturulmaz;
-üç geçerli kayıt da değişmediği için atlanır.
-
-Bu sayılar yukarıdaki dosya sırasına ve başlangıçta boş veritabanına göre
-beklenen sonuçlardır.
-
-## Ürün pasaportu ve çıktılar
-
-Aşağıdaki bağlantılar örnek GTIN içe aktarıldıktan sonra kullanılabilir.
-
-
-| Çıktı               | Adres                                                       |
-| ---------------------- | ----------------------------------------------------------- |
-| HTML pasaport          | http://localhost:5016/dpp/08690000000050                    |
-| Yetkili görünümü   | http://localhost:5016/dpp/08690000000050?rol=yetkili        |
-| JSON-LD                | http://localhost:5016/dpp/08690000000050.jsonld             |
-| Yetkili JSON-LD        | http://localhost:5016/dpp/08690000000050.jsonld?rol=yetkili |
-| QR PNG                 | http://localhost:5016/dpp/08690000000050/qr.png             |
-| Sürüm geçmişi JSON | http://localhost:5016/dpp/08690000000050/history            |
-
-JSON-LD, `https://schema.org` bağlamında `Product` olarak oluşturulur
-ve `application/ld+json` içerik türüyle döner.
-
-Kayıt bulunamayan GTIN için 404 yanıtı döner.
-
-## Karbon bilgisi ve rol gösterimi
-
-Karbon değeri CSV'den alınır; uygulama karbon ayak izi hesaplamaz.
-
-Normal HTML, JSON-LD ve sürüm geçmişi çıktılarında karbon alanı
-gösterilmez. `?rol=yetkili` parametresi ile bu alan dahil edilir.
-
-Bu parametre teknik ödev kapsamındaki rol gösterimidir.
-Gerçek kimlik doğrulama veya erişim yetkilendirmesi sağlamaz.
-
-## Sürüm geçmişi
-
-- Yeni ürün sürüm 1 olarak oluşturulur.
-- Aynı GTIN'in bilgileri değiştiğinde önceki durum arşivlenir.
-- Güncel kaydın sürüm numarası artırılır ve UTC güncelleme tarihi tutulur.
-- Değişmeyen bilgiler yeniden yüklendiğinde sürüm artırılmaz.
-- Model adı da geçmiş kayda kopyalanır.
-- Arşivleme ve güncelleme aynı SaveChanges işlemiyle birlikte kaydedilir.
-- Sürüm alanı, eş zamanlı güncelleme çakışmalarını algılamak için
-  concurrency token olarak kullanılır.
-
-Arayüz tarihleri Türkiye saatine göre gösterir. Sürüm takibi eklenmeden
-önce oluşturulmuş kayıtların bilinmeyen tarihleri uydurulmaz;
-“Tarih kaydedilmemiş” olarak gösterilir.
-
-## Veri modeli
-
-- `ProductModels`: Ürün modelleri.
-- `ProductBatches`: GTIN ile tanımlanan güncel ürün/parti bilgileri.
-- `ProductBatchVersions`: Güncelleme öncesindeki sürümlerin kopyaları.
-
-Bu uygulamada GTIN benzersizdir. Aynı GTIN altında birden fazla ayrı
-partiyi eş zamanlı yönetmek kapsam dışındadır; aynı GTIN ile gelen
-değişiklik mevcut kaydın yeni sürümü olarak değerlendirilir.
+SQLite dosyası Git’e eklenmez. Bağlantı ayarı
+`MiniDpp/appsettings.json` içindeki `ConnectionStrings:MiniDpp` alanıdır.
 
 ## Telefonda QR testi
 
-Telefon ve bilgisayar aynı yerel ağda olmalıdır.
-
-Backend'i yerel ağdan erişilebilir başlatın:
+Telefon ve bilgisayar aynı Wi-Fi ağına bağlıyken backend’i başlatın.
+Önceden çalışan backend varsa önce durdurun:
 
 ```bash
+# Depo kökünden:
 cd MiniDpp
 dotnet run --no-launch-profile --urls http://0.0.0.0:5016
 ```
 
-Bilgisayarın yerel IP adresini kullanarak pasaportu bilgisayarda açın:
+Bilgisayarda aşağıdaki adresi kendi yerel IP’nizle açıp sayfadaki QR’ı okutun:
 
 ```text
 http://<bilgisayar-ip-adresi>:5016/dpp/08690000000050
 ```
 
-Bu sayfadaki QR'ı telefonla okutun. QR, pasaport adresini içerir;
-okutulduğunda ürünün HTML pasaportu açılır.
+QR, ürünün HTML pasaportuna yönlendirir. `localhost` ile oluşturulan QR
+telefonda çalışmaz; bilgisayar ve backend açık kalmalıdır.
 
-QR adresi istek yapılan sunucu adresinden üretilir. `localhost` üzerinden
-oluşturulan QR başka cihazda çalışmaz. IP üzerinden oluşturulan QR için
-bilgisayarın, backend'in ve yerel ağ erişiminin açık olması gerekir.
+## Kontroller ve sorun giderme
 
-## Derleme ve kod kontrolü
-
-Depo kökünden backend kontrolü:
+Depo kökünden:
 
 ```bash
 dotnet build MiniDpp/MiniDpp.csproj
-```
-
-Frontend kontrolleri:
-
-```bash
 cd client
 npm run build
 npm run lint
 ```
 
-`npm run build`, frontend'in üretim dosyalarını `client/dist` altında
-oluşturur. Vite proxy ayarları geliştirme sunucusuna aittir;
-üretim yayını için ayrıca backend yönlendirmesi gerekir.
+**`no such table: ProductBatches` hatası:** Backend’i durdurun,
+backend klasöründe `dotnet ef database update` çalıştırıp yeniden başlatın.
 
-## Kapsam ve varsayımlar
+**Ürün listesi boş:** `samples/products.csv` dosyasını yükleyin.
 
-- Yerel geliştirme ve teknik değerlendirme için hazırlanmıştır.
-- SQLite veritabanı dosyası depoya eklenmez; migration ile oluşturulur.
-- Örnek veriler CSV yükleme üzerinden eklenir.
-- Gerçek kullanıcı yönetimi ve canlı yayın yapılandırması kapsam dışındadır.
-- Otomatik test paketi bulunmaz; derleme, lint ve manuel akış kontrolleri kullanılır.
+**CSV başlık hatası:** Dosyanın gerçekten virgülle ayrılmış CSV olduğunu
+kontrol edin. Numbers/Excel dışa aktarırken ayırıcıyı ve GTIN’lerin başındaki
+sıfırları değiştirebilir.
+
+Proje yerel değerlendirme içindir. Otomatik test paketi bulunmaz;
+derleme, lint ve manuel akış kontrolleri kullanılır. Üretim yayını için
+ayrıca barındırma ve yönlendirme yapılandırması gerekir.
